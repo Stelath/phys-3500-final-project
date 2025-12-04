@@ -1,26 +1,34 @@
-function [k_est, t_model, y_model] = solveDragODE(time, altitude, velocity, mass, g, t_start)
+function [k_est, t_model, y_model] = solveDragODE(time, altitude, velocity, mass, g, t_start, t_end)
 % SOLVEDRAGODE Estimate drag coefficient and model trajectory
-%   [k_est, t_model, y_model] = solveDragODE(time, altitude, velocity, mass, g, t_start)
+%   [k_est, t_model, y_model] = solveDragODE(time, altitude, velocity, mass, g, t_start, t_end)
 %
 %   Model: m*v' = -mg - kv (Linear Drag)
-%   Note: Fitting is restricted to t >= t_start (coast phase)
+%   Note: Fitting is restricted to t_start <= t <= t_end (ascent coast phase)
 
 % 1. Define the ODE function for optimization
 % State vector Y = [y; v]
 ode_fun = @(t, Y, k) [Y(2); -g - (k/mass)*Y(2)];
 
-% 2. Prepare data for fitting (Coast Phase Only)
-% Find index corresponding to t_start
+% 2. Prepare data for fitting (Coast Phase Only: Burnout -> Apogee)
+% Find indices corresponding to t_start and t_end
 idx_start = find(time >= t_start, 1);
-time_fit = time(idx_start:end);
-alt_fit = altitude(idx_start:end);
-vel_fit = velocity(idx_start:end);
+idx_end = find(time >= t_end, 1);
+
+if isempty(idx_end)
+    idx_end = length(time);
+end
+
+time_fit = time(idx_start:idx_end);
+alt_fit = altitude(idx_start:idx_end);
+vel_fit = velocity(idx_start:idx_end);
 
 % Initial conditions for the fit
 y0 = alt_fit(1);
 v0 = vel_fit(1);
 Y0 = [y0; v0];
-t_span = [min(time_fit), max(time_fit)];
+% We want to model the full trajectory for visualization, so we keep t_span large
+% But fitting is only on time_fit
+t_span_model = [min(time_fit), max(time)];
 
 % Sweep k values
 k_candidates = linspace(0, 3.0, 50);
@@ -45,6 +53,6 @@ h = 0.01; % Step size
 % Define function for Euler Modified (returns column vector to match transpose in solver)
 f_euler = @(t, Y) [Y(2); -g - (k_est/mass)*Y(2)];
 
-[t_model, Y_model] = euler_modified(f_euler, t_span, Y0', h);
+[t_model, Y_model] = euler_modified(f_euler, t_span_model, Y0', h);
 y_model = Y_model(:, 1);
 end
