@@ -1,12 +1,12 @@
-% Rocket Flight Analysis - Main Driver Script
+% Rocket Flight Analysis - by Alex Korte & Julia Jacques
 %
-% This script coordinates the analysis of rocket flight data.
+% This script analyzes rocket flight altimiter data to estimate a whole host of parameters.
 % It performs data import, interpolation, differentiation, root finding,
 % integration, and ODE modeling.
 
 clear; close all; clc;
 
-% Add src and subdirectories to path
+% Import all the other modules (had to make it multiple folders cause it was becoming a mess)
 addpath('src');
 addpath('src/data');
 addpath('src/numerical');
@@ -16,7 +16,7 @@ addpath('src/plotting');
 %% 1. Setup and Constants
 filename = 'ROCKET-FLIGHT-DATA.csv';
 g = 9.81;       % Gravity (m/s^2)
-mass = 0.5;     % Mass (kg) - ESTIMATE/PLACEHOLDER
+mass = 0.5;     % Mass (kg) - This is kinda a rough estimate because the launch was so long ago
 
 fprintf('Running Rocket Flight Analysis...\n');
 
@@ -28,15 +28,14 @@ fprintf('Importing data...\n');
 %% 3. Interpolation
 fprintf('Interpolating altitude data...\n');
 % Create a uniform high-res time vector for analysis
-% Reduced from 10000 to 2000 to reduce noise amplification in differentiation
 num_points = 2000;
-[time, alt_linear, alt_spline] = interpolateAltitude(time_raw, alt_raw, num_points);
+[time, alt_spline] = interpolateAltitude(time_raw, alt_raw, num_points);
 
-% Interpolate acceleration for validation
+% Interpolate ground truth acceleration data for validation of our derivations
 accel_interp = interp1(time_raw, accel_raw, time, 'linear');
 
-% We will use the Spline interpolation for subsequent calculations as it's smoother
-% Apply additional smoothing to remove high-frequency noise before differentiation
+% Use the spline interpolation as it helps prevent the differentiation from
+% being too noisy, also apply a guassian filter to remove some of the high frequency sensor noise
 alt_analysis = smoothdata(alt_spline, 'gaussian', 50);
 
 %% 4. Numerical Differentiation
@@ -60,8 +59,6 @@ fprintf('  Total Distance:   %.2f m\n', total_dist);
 
 %% 7. ODE Solving (Drag Estimation)
 fprintf('Estimating drag coefficient...\n');
-% Use max_vel_time (approx burnout) as start time for coast phase analysis
-% Use apogee_time as end time (before parachute deployment)
 [k_est, t_model, y_model] = solveDragODE(time, alt_analysis, velocity, mass, g, max_vel_time, apogee_time);
 fprintf('  Estimated k:      %.4f kg/s\n', k_est);
 
@@ -72,7 +69,7 @@ fprintf('Plotting results...\n');
 plotResults(time, alt_analysis, velocity, acceleration, t_model, y_model, apogee_idx, accel_interp, impact_time, impact_vel);
 
 % Save plots to files (Manual export available via figure menu)
-% savePlots(time, alt_analysis, velocity, acceleration, t_model, y_model, apogee_idx, accel_interp, impact_time, impact_vel);
+savePlots(time, alt_analysis, velocity, acceleration, t_model, y_model, apogee_idx, accel_interp, impact_time, impact_vel);
 
 
 fprintf('Analysis Complete.\n');
