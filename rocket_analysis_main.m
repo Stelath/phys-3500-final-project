@@ -71,8 +71,8 @@ fprintf('Plotting results...\n');
 [~, apogee_idx] = min(abs(time - apogee_time));
 plotResults(time, alt_analysis, velocity, acceleration, t_model, y_model, apogee_idx, accel_interp, impact_time, impact_vel);
 
-%% 9. Validation
-% Validation removed as per user request
-% validateResults(time, alt_analysis, velocity, acceleration, apogee_time);
+% Save plots to files (Manual export available via figure menu)
+% savePlots(time, alt_analysis, velocity, acceleration, t_model, y_model, apogee_idx, accel_interp, impact_time, impact_vel);
+
 
 fprintf('Analysis Complete.\n');

@@ -2,6 +2,11 @@ function plotResults(time, altitude, velocity, acceleration, t_model, y_model, a
 % PLOTRESULTS Visualize rocket flight data
 
 f = figure('Name', 'Rocket Flight Analysis', 'NumberTitle', 'off', 'Position', [100, 100, 1500, 600]);
+
+% Add Export Menu
+m = uimenu(f, 'Text', 'Export Plots');
+uimenu(m, 'Text', 'Save to results/', 'MenuSelectedFcn', @(~,~) savePlots(time, altitude, velocity, acceleration, t_model, y_model, apogee_idx, accel_measured, impact_time, impact_vel));
+
 tabgp = uitabgroup(f);
 
 %% Tab 1: Flight Analysis (Combined)
