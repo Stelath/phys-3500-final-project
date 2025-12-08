@@ -3,29 +3,46 @@ import numpy as np
 
 class DifferentiationVisualization(Scene):
     def construct(self):
-        # --- 1. Data Generation ---
-        t_vals = np.linspace(0.5, 24.5, 100) # Higher res for smooth sliding
-        true_func = lambda t: -3.2 * (t - 12.5)**2 + 500
+        # Realistic rocket profile:
+        # Phase 1 (0-3s): Thrust phase with high positive acceleration
+        # Phase 2 (3s-peak): Coast up with gravity deceleration
+        # Phase 3 (peak-25s): Fall back down with gravity
         
+        t_data = np.linspace(0, 25, 200)
+        
+        # Build altitude piecewise
+        # Build altitude piecewise
+        def rocket_altitude(t):
+            g = 9.8  # gravity
+            thrust_accel = 50.3  # Adjusted for approx 500m peak with high v0
+            burn_time = 1.8
+            v0 = 0.0 # High initial velocity for very sharp takeoff (no S-curve)
+            
+            if t <= burn_time:
+                # Thrust phase: d = v0*t + 0.5*a*t^2
+                alt = v0 * t + 0.5 * thrust_accel * t**2
+            else:
+                # At end of burn:
+                v_burnout = v0 + thrust_accel * burn_time
+                h_burnout = v0 * burn_time + 0.5 * thrust_accel * burn_time**2
+                
+                # Coast phase
+                dt = t - burn_time
+                alt = h_burnout + v_burnout * dt - 0.5 * g * dt**2
+            
+            return max(0, alt)
+        
+        y_smooth_data = np.array([rocket_altitude(t) for t in t_data])
+        
+        # Add smooth noise (increased slightly as requested)
         np.random.seed(42)
-        noise_amp = 40
-        # Generate noisy data on a coarser grid first to match interpolation feeling?
-        # Actually let's just use the function + noise for generating the curve content
-        # But we need the arrays for numerical diff
-        
-        # Consistent with interpolation.py:
-        t_data = np.linspace(0.5, 24.5, 40)
-        y_data = [max(0, true_func(t) + np.random.normal(0, noise_amp/2)) for t in t_data]
-        
-        # Smooth it
-        def gaussian_kernel(size, sigma=1):
-            x = np.linspace(-size//2, size//2, size)
-            k = np.exp(-0.5 * (x/sigma)**2)
-            return k / k.sum()
-        kernel = gaussian_kernel(size=9, sigma=3)
-        y_smooth_data = np.convolve(y_data, kernel, mode='same')
-        y_smooth_data[:4] = y_data[:4]
-        y_smooth_data[-4:] = y_data[-4:]
+        # Use cumulative sum of random values
+        noise = np.cumsum(np.random.normal(0, 0.5, len(t_data))) # Increased noise
+        # Apply a low-pass filter
+        kernel_size = 15
+        noise_smooth = np.convolve(noise, np.ones(kernel_size)/kernel_size, mode='same')
+        y_smooth_data = y_smooth_data + noise_smooth
+        y_smooth_data = np.clip(y_smooth_data, 0, None) # Ensure noise doesn't put us underground
         
         # Create interpolation functions for continuous sampling in animation
         from scipy.interpolate import interp1d
@@ -69,7 +86,7 @@ class DifferentiationVisualization(Scene):
             "axis_config": {"include_numbers": True, "font_size": 20}
         }
         config_acc = {
-            "x_range": [0, 25, 5], "y_range": [-20, 20, 5], 
+            "x_range": [0, 25, 5], "y_range": [-20, 60, 10], 
             "x_length": 6, "y_length": 4, 
             "axis_config": {"include_numbers": True, "font_size": 20}
         }
@@ -100,7 +117,7 @@ class DifferentiationVisualization(Scene):
         
         def update_tangent_elements(m):
             t = t_tracker.get_value()
-            dt_step = 2.0 # The "width" of the secant window
+            dt_step = 0.5 # Closer points
             
             p_c = ax_alt.c2p(t, alt_func(t))
             p_l = ax_alt.c2p(max(0, t - dt_step), alt_func(max(0, t - dt_step)))
@@ -112,10 +129,7 @@ class DifferentiationVisualization(Scene):
             
             # Draw line through left and right points
             tangent_line.put_start_and_end_on(p_l, p_r)
-            # Make it longer visually?
-            # tangent_line.scale(1.5) # Scale resets center, careful. 
-            # put_start_and_end defines center. scaling around center is fine.
-            tangent_line.scale(1.2)
+            tangent_line.scale(6.0)
 
         # Group them
         sliding_group = VGroup(dot_center, dot_left, dot_right, tangent_line)
@@ -179,7 +193,7 @@ class DifferentiationVisualization(Scene):
         
         def update_tangent_elements_vel(m):
             t = t_tracker.get_value()
-            dt_step = 2.0
+            dt_step = 0.5
             
             # Using ax_vel coordinates now!
             # Note: ax_vel has moved. c2p should respect the new position if it was moved correctly.
@@ -192,7 +206,7 @@ class DifferentiationVisualization(Scene):
             dot_left.move_to(p_l)
             dot_right.move_to(p_r)
             tangent_line.put_start_and_end_on(p_l, p_r)
-            tangent_line.scale(1.2)
+            tangent_line.scale(6.0)
 
         sliding_group = VGroup(dot_center, dot_left, dot_right, tangent_line)
         sliding_group.add_updater(update_tangent_elements_vel)
