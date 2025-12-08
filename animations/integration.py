@@ -60,7 +60,7 @@ class IntegrationVisualization(Scene):
         ax_right = Axes(**conf_dist, axis_config={"include_numbers": True, "font_size": 20}).to_edge(RIGHT, buff=0.5)
         
         lbl_vel = Text("Velocity (m/s)", font_size=24, color=RED).next_to(ax_left, UP)
-        lbl_dist = Text("Total Distance (m)", font_size=20, color=GREEN).next_to(ax_right, UP)
+        lbl_dist = Text("Total Distance (m)", font_size=24, color=GREEN).next_to(ax_right, UP)
         
         # 1. Show Velocity Curve
         c_vel = ax_left.plot(lambda t: vel_func(t), color=RED, x_range=[0, 25])
@@ -156,7 +156,8 @@ class IntegrationVisualization(Scene):
         # Actually, let's just leave the piecewise Green line as the "Result" 
         # because "The Trapezoid Method outline in src/numerical/trapezoid.m" produces discrete steps.
         
-        final_lbl = Text("Total Distance", font_size=24, color=WHITE).next_to(dist_segment, UP)
+        final_lbl = Text("Total Distance", font_size=20, color=WHITE).next_to(dist_segment, UP)
+        final_lbl.shift(LEFT * final_lbl.width / 2)
         self.play(Write(final_lbl))
         
         self.wait(3)
