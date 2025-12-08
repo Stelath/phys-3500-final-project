@@ -104,6 +104,92 @@ class DifferentiationVisualization(Scene):
         
         # --- Animation Phase 1 : Alt -> Vel ---
         self.play(Create(ax_alt), Write(lbl_alt), Create(curve_alt))
+        
+        # --- Magnified Explanation Step ---
+        t_zoom = 1.5
+        dt_zoom = 0.275 # Use smaller step for closer points as requested
+        
+        # 1. Highlight region on main graph
+        # Show tiny dots on main graph first
+        p_l_m = ax_alt.c2p(t_zoom - dt_zoom, alt_func(t_zoom - dt_zoom))
+        p_c_m = ax_alt.c2p(t_zoom, alt_func(t_zoom))
+        p_r_m = ax_alt.c2p(t_zoom + dt_zoom, alt_func(t_zoom + dt_zoom))
+        
+        dot_l_m = Dot(p_l_m, color=WHITE, radius=0.05)
+        dot_c_m = Dot(p_c_m, color=YELLOW, radius=0.06)
+        dot_r_m = Dot(p_r_m, color=WHITE, radius=0.05)
+        
+        p_main = ax_alt.c2p(t_zoom, alt_func(t_zoom))
+        zoom_rect = SurroundingRectangle(Dot(p_main).scale(2), color=YELLOW, buff=0.2)
+        
+        self.play(FadeIn(dot_l_m), FadeIn(dot_c_m), FadeIn(dot_r_m))
+        self.play(Create(zoom_rect))
+        
+        # 2. Create Zoomed Plot on Right (Visualized as a Box)
+        # We need the axes object for calculations (c2p) but we won't show the axes lines themselves
+        ax_zoom = Axes(
+            x_range=[t_zoom - 0.6, t_zoom + 0.6, 0.2], # Smaller range for closer zoom
+            y_range=[30, 80, 10],   # Adjusted y range 
+            x_length=4, y_length=4, # Square aspect ratio
+            tips=False
+        ).to_edge(RIGHT, buff=1.0) # More buffer to shift left slightly
+        
+        # The visual "frame" for the zoom (Square yellow box)
+        frame_rect = Rectangle(width=5, height=5, color=YELLOW).move_to(ax_zoom.get_center())
+        
+        # Plot only the segment
+        curve_zoom = ax_zoom.plot(lambda t: alt_func(t), color=GREEN, x_range=[t_zoom - 0.6, t_zoom + 0.6])
+        
+        # Transform the small highlight box into the large frame
+        self.play(ReplacementTransform(zoom_rect.copy(), frame_rect))
+        self.play(Create(curve_zoom))
+        
+        # 3. Show Stencil Points
+        p_l_z = ax_zoom.c2p(t_zoom - dt_zoom, alt_func(t_zoom - dt_zoom))
+        p_c_z = ax_zoom.c2p(t_zoom, alt_func(t_zoom))
+        p_r_z = ax_zoom.c2p(t_zoom + dt_zoom, alt_func(t_zoom + dt_zoom))
+        
+        dot_l_z = Dot(p_l_z, color=WHITE)
+        dot_c_z = Dot(p_c_z, color=YELLOW) # Center point distinct
+        dot_r_z = Dot(p_r_z, color=WHITE)
+        
+        # Labels for points
+        lbl_l = MathTex("t-h", font_size=24).next_to(dot_l_z, DOWN)
+        lbl_c = MathTex("t", font_size=24).next_to(dot_c_z, DOWN)
+        lbl_r = MathTex("t+h", font_size=24).next_to(dot_r_z, DOWN)
+        
+        self.play(FadeIn(dot_l_z), FadeIn(dot_c_z), FadeIn(dot_r_z))
+        self.play(Write(lbl_l), Write(lbl_c), Write(lbl_r))
+        
+        # 4. Secant Line
+        secant_line = Line(p_l_z, p_r_z, color=RED)
+        self.play(Create(secant_line))
+        
+        # 5. Formula
+        # Put formula in top-left of box
+        formula = MathTex(
+            r"v(t) \approx \frac{y(t+h) - y(t-h)}{2h}",
+            font_size=20, color=WHITE
+        )
+        # Position relative to frame corner
+        formula.move_to(frame_rect.get_corner(UL) + DOWN*0.65 + RIGHT*1.5)
+        # formula.add_background_rectangle(opacity=0.6, buff=0.1)
+        
+        self.play(Write(formula))
+        self.wait(3)
+        
+        # 6. Cleanup
+        self.play(
+            FadeOut(frame_rect), FadeOut(curve_zoom),
+            FadeOut(dot_l_z), FadeOut(dot_c_z), FadeOut(dot_r_z),
+            FadeOut(lbl_l), FadeOut(lbl_c), FadeOut(lbl_r),
+            FadeOut(secant_line), FadeOut(formula),
+            FadeOut(dot_l_m), FadeOut(dot_c_m), FadeOut(dot_r_m), # Cleanup main graph dots
+            FadeOut(zoom_rect) # Fade out the original small rect too if it's still there (actually transformed copy)
+                               # Wait, zoom_rect was NOT transformed. zoom_rect.copy() was. The original zoom_rect is still there!
+        )
+        
+        # Resume original flow
         self.play(Create(ax_vel), Write(lbl_vel))
         
         # Sliding Tangent Updater
